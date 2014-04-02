@@ -1,0 +1,1 @@
+Please place any non-standard arduino libraries into this folder.
