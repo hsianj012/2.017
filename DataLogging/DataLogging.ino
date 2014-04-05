@@ -4,6 +4,8 @@
 #include <SD.h>
 #include <avr/sleep.h>
 #include <string>
+#include <array>
+
 // Ladyada's logger modified by Bill Greiman to use the SdFat library
 //
 // This code shows how to listen to the GPS module in an interrupt
@@ -35,15 +37,23 @@ File logfile;
 ///////////////////////
 // Added extra variables
 #define Rad_earth 6378100 // in m
-double desiredlatitude;
-double desiredlongitude;
-double myHeading;
+double desiredLatitude;
+double desiredLongitude;
 double mydecimallatitude;
 double mydecimallongitude;
 double myDistanceToGo;
-double compassHeading = 180.0;
+
+double desiredHeading; //from GPS
+double currentHeading; //from compass
+double relWindAngle; //from wind vane
+//double flowDiff; // from anemometers
+//double boatHeel; // from accelerometer
+
+double sailTrim; //actuator variables
+double rudderAngle;
+
 boolean isLogging = true;
-boolean initTable = false;
+int logTime = 10000; //in ms
 ///////////////////////
 
 // read a Hex value and return the decimal equivalent
@@ -84,6 +94,10 @@ void error(uint8_t errno) {
 
 
 void setup() {
+  
+  /////////////////////********************   GPS AND SD CARD INITIALIZATION   ******************************/////////////////////
+  
+  
   // for Leonardos, if you want to debug SD issues, uncomment this line
   // to see serial output
   //while (!Serial);
@@ -138,29 +152,74 @@ void setup() {
   // Turn off updates on antenna status, if the firmware permits it
   GPS.sendCommand(PGCMD_NOANTENNA);
   
+  ////////////////////////********************   OTHER INITIALIZATION PROCEDURES *********************************////////////////
+  
+   // *initialize other sensors here* 
+ 
   Serial.println("Ready!");
 }
 
+void logData(){
+  
+  /*
+    Print statement:
+    
+    DESIRED HEADING [DEG], CURRENT HEADING [DEG], RUDDER ANGLE, REL WIND ANGLE [DEG], SAIL TRIM;
+    
+  */
+  
+  
+  //    char *stringptr = GPS.lastNMEA();
+  //    uint8_t stringsize = strlen(stringptr);
+  //    if (stringsize != logfile.write((uint8_t *)stringptr, stringsize))    //write the string to the SD file
+  //      error(4);
+        
+          
+     //String bufferString = to_string(currentHeading);
+     //const char *buffer = bufferString.c_str();
+  //   char buffer[10];
+  
+  double data[] = {desiredHeading, currentHeading, rudderAngle, relWindAngle, sailTrim};
+  int dataLength = 5;
+  
+  for(int i=0; i<dataLength; i++){     //iterate through array of data
+    
+    char *buffer =  new char[11];     // create buffer w/ space to store value and delimeter
+    dtostrf(data[i], 4, 2, buffer);     //convert double to string and store in char array (buffer)
+    buffer[9] = ',';     //change char before '/0' to delimeter between values
+    
+    if(i==(dataLength-1))    //if last value use the statement delimeter
+      buffer[9] = ';';
+      
+    uint8_t len = strlen(buffer);
+    
+    if (len != logfile.write((uint8_t*)buffer, len))    //write the string to the SD file
+      error(4);
+    
+  }
+    
+    logfile.flush();  //save data statement
+    Serial.println();
+  
+}
+
+
 void loop() {
-  
-  /*if(!initTable){
-      logfile.write("Cur");
-  
-      //logfile.print("         ");
-      //logfile.println("Desired Heading [deg]");
-      initTable = true;
-    }*/
-  if(millis()>10000 && isLogging==true){
+
+  //////////////////**************** TIMED DATA LOGGING ****************//////////////////////////////////////////////////////
+  if(millis()>logTime && isLogging==true){
     logfile.close();
     isLogging = false;
     Serial.println("Closing file");
     return;
   }
   
-  else if(millis()>10000 && isLogging==false){
+  else if(millis()>logTime && isLogging==false){
     Serial.println("Logging Done!!");
     return;
   }
+  
+  ///////////////////////////////////////**************************   GPS HEADING CALCULATION ******************///////////////////
   
   char c = GPS.read();
   if (GPSECHO)
@@ -192,11 +251,11 @@ void loop() {
     // the baud rate is limited. So do be careful.
     
     // set desired location
-    desiredlatitude = 41;
-    desiredlongitude = -71.095161;
+    desiredLatitude = 41;
+    desiredLongitude = -71.095161;
     
-    Serial.print("dlat: ");  Serial.println(desiredlatitude,6);
-    Serial.print("dlong: "); Serial.println(desiredlongitude,6);
+    Serial.print("dlat: ");  Serial.println(desiredLatitude,6);
+    Serial.print("dlong: "); Serial.println(desiredLongitude,6);
     
     // convert latitude and longitude to helpful values
     // Ex: 4213.14 = 42 [degrees] + 13.14 [minutes] /60 = 42.219 [decimal degrees]
@@ -217,53 +276,35 @@ void loop() {
     Serial.print("long: "); Serial.println(mydecimallongitude,6);
     
     // calculate heading
-    // cos(mydecimallatitude)*(desiredlongitude - mydecimallongitude) * Rad_earth is the "horizontal" part of the square
-    // (desiredlatitude-mydecimallatitude) * Rad_earth is the vertical part of the square.
+    // cos(mydecimallatitude)*(desiredLongitude - mydecimallongitude) * Rad_earth is the "horizontal" part of the square
+    // (desiredLatitude-mydecimallatitude) * Rad_earth is the vertical part of the square.
     // When calculating the heading you do atan(horizontal/vertical) so the Rad_earth cancels.
     // To get the heading in degrees you multiply by 180 and divide by 3.141592.
-    myHeading = atan2(
-          cos(mydecimallatitude/180.0*3.141592)*(desiredlongitude - mydecimallongitude),
-          (desiredlatitude-mydecimallatitude))
+    desiredHeading = atan2(
+          cos(mydecimallatitude/180.0*3.141592)*(desiredLongitude - mydecimallongitude),
+          (desiredLatitude-mydecimallatitude))
           *180.0/3.141592;
     
     //try to keep heading always positive.
-    if (myHeading <0)
-        myHeading = myHeading + 360;
+    if (desiredHeading <0)
+        desiredHeading = desiredHeading + 360;
         
     // Calculate distance to go: use pythagorean theorem.
     myDistanceToGo = Rad_earth * 
           sqrt(
-          pow((cos(mydecimallatitude/180.0*3.141592)*(desiredlongitude - mydecimallongitude)/180.0*3.141592),2.0)+
-          pow((desiredlatitude-mydecimallatitude)/180.0*3.141592,2.0));
+          pow((cos(mydecimallatitude/180.0*3.141592)*(desiredLongitude - mydecimallongitude)/180.0*3.141592),2.0)+
+          pow((desiredLatitude-mydecimallatitude)/180.0*3.141592,2.0));
           
-    Serial.print("H: ");Serial.println(myHeading,6); 
+    Serial.print("H: ");Serial.println(desiredHeading,6); 
     Serial.print("D: ");Serial.println(myDistanceToGo,6);
     
-    /*logfile.print(compassHeading);
-    logfile.print("               ");
-    logfile.println(myHeading);*/
-    Serial.println("Log");
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
-//    char *stringptr = GPS.lastNMEA();
-//    uint8_t stringsize = strlen(stringptr);
-//    if (stringsize != logfile.write((uint8_t *)stringptr, stringsize))    //write the string to the SD file
-//      error(4);
-      
-        
-   //String bufferString = to_string(compassHeading);
-   //const char *buffer = bufferString.c_str();
-//   char buffer[10];
-     
-     
-     char *buffer =  new char[10];
-     dtostrf(compassHeading, 10, 2, buffer);
-     uint8_t len = strlen(buffer);
 
-    if (len != logfile.write((uint8_t*)buffer, len))    //write the string to the SD file
-      error(4);
+    Serial.println("Logging Data");
     
-    logfile.flush();
-    Serial.println();
+    // building statement
+    logData(); // CAN ONLY TAKE PROPERLY ROUNDED VALUES
     // End added code
     ///////////////////////
   }
