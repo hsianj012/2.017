@@ -3,8 +3,6 @@
 #include <SoftwareSerial.h>
 #include <SD.h>
 #include <avr/sleep.h>
-#include <string>
-#include <array>
 
 // Ladyada's logger modified by Bill Greiman to use the SdFat library
 //
@@ -37,20 +35,22 @@ File logfile;
 ///////////////////////
 // Added extra variables
 #define Rad_earth 6378100 // in m
-double desiredLatitude;
-double desiredLongitude;
-double mydecimallatitude;
-double mydecimallongitude;
-double myDistanceToGo;
+float desiredLatitude = 0.0;
+float desiredLongitude = 0.0;
+float mydecimallatitude = 0.0;
+float mydecimallongitude = 0.0;
+float myDistanceToGo = 0.0;
 
-double desiredHeading; //from GPS
-double currentHeading; //from compass
-double relWindAngle; //from wind vane
-//double flowDiff; // from anemometers
-//double boatHeel; // from accelerometer
+float desiredHeading = 5.0; //from GPS
+float currentHeading = 178.0; //from compass
+float relWindAngle = 45.0; //from wind vane
+//float flowDiff; // from anemometers
+//float boatHeel; // from accelerometer
 
-double sailTrim; //actuator variables
-double rudderAngle;
+float sailTrim = 0.3; //actuator variables
+float rudderAngle = 0.1;
+
+
 
 boolean isLogging = true;
 int logTime = 10000; //in ms
@@ -159,49 +159,6 @@ void setup() {
   Serial.println("Ready!");
 }
 
-void logData(){
-  
-  /*
-    Print statement:
-    
-    DESIRED HEADING [DEG], CURRENT HEADING [DEG], RUDDER ANGLE, REL WIND ANGLE [DEG], SAIL TRIM;
-    
-  */
-  
-  
-  //    char *stringptr = GPS.lastNMEA();
-  //    uint8_t stringsize = strlen(stringptr);
-  //    if (stringsize != logfile.write((uint8_t *)stringptr, stringsize))    //write the string to the SD file
-  //      error(4);
-        
-          
-     //String bufferString = to_string(currentHeading);
-     //const char *buffer = bufferString.c_str();
-  //   char buffer[10];
-  
-  double data[] = {desiredHeading, currentHeading, rudderAngle, relWindAngle, sailTrim};
-  int dataLength = 5;
-  
-  for(int i=0; i<dataLength; i++){     //iterate through array of data
-    
-    char *buffer =  new char[11];     // create buffer w/ space to store value and delimeter
-    dtostrf(data[i], 4, 2, buffer);     //convert double to string and store in char array (buffer)
-    buffer[9] = ',';     //change char before '/0' to delimeter between values
-    
-    if(i==(dataLength-1))    //if last value use the statement delimeter
-      buffer[9] = ';';
-      
-    uint8_t len = strlen(buffer);
-    
-    if (len != logfile.write((uint8_t*)buffer, len))    //write the string to the SD file
-      error(4);
-    
-  }
-    
-    logfile.flush();  //save data statement
-    Serial.println();
-  
-}
 
 
 void loop() {
@@ -298,17 +255,91 @@ void loop() {
     Serial.print("H: ");Serial.println(desiredHeading,6); 
     Serial.print("D: ");Serial.println(myDistanceToGo,6);
     
+ currentHeading = 178.0; //from compass
+ relWindAngle = 45.0; //from wind vane
+//float flowDiff; // from anemometers
+//float boatHeel; // from accelerometer
+
+ sailTrim = 0.3; //actuator variables
+ rudderAngle = 0.1;
+    
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
 
     Serial.println("Logging Data");
     
     // building statement
-    logData(); // CAN ONLY TAKE PROPERLY ROUNDED VALUES
+    //logData(); // CAN ONLY TAKE PROPERLY ROUNDED VALUES
     // End added code
     ///////////////////////
-  }
+    logData();
+  } 
+  
 }
+
+void logData(){
+  
+  /*
+    Print statement:
+    
+    DESIRED HEADING [DEG], CURRENT HEADING [DEG], RUDDER ANGLE, REL WIND ANGLE [DEG], SAIL TRIM;
+    
+  */
+  
+  
+  //    char *stringptr = GPS.lastNMEA();
+  //    uint8_t stringsize = strlen(stringptr);
+  //    if (stringsize != logfile.write((uint8_t *)stringptr, stringsize))    //write the string to the SD file
+  //      error(4);
+        
+          
+     //String bufferString = to_string(currentHeading);
+     //const char *buffer = bufferString.c_str();
+  //   char buffer[10];
+  
+  //float data[5] = {desiredHeading, currentHeading, rudderAngle, relWindAngle, sailTrim};
+  int dataLength = 5;
+  
+  for(int i=0; i<dataLength; i++){     //iterate through array of data
+    
+    //char *buffer =  new char[11];     // create buffer w/ space to store value and delimeter
+    char bufferArray[7];
+    char * bufferPointer;
+    bufferPointer = bufferArray;
+    //Serial.println(data[1]);
+    /*float val;
+    
+    switch(i){
+      case 0:
+        val = desiredHeading;
+      case 1:
+        val = currentHeading;
+      case 2:
+        val = rudderAngle;
+      case 3:
+        val = relWindAngle;
+      case 4:
+        val = sailTrim;
+      default:
+        val = 0.0;
+    }*/
+    dtostrf(desiredHeading, 6, 3, bufferPointer);     //convert float to string and store in char array (buffer)
+    bufferArray[5] = ',';     //change char before '/0' to delimeter between values
+    
+    if(i==(dataLength-1))    //if last value use the statement delimeter
+      bufferArray[5] = ';';
+      
+    uint8_t len = strlen(bufferPointer);
+    if (len != logfile.write((uint8_t*)bufferPointer, len))    //write the string to the SD file
+      error(4);
+    
+  }
+    
+    logfile.flush();  //save data statement
+    Serial.println();
+  
+}
+
 
 
 /* End code */
