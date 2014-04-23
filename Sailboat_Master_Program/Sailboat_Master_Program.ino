@@ -4,20 +4,7 @@
 #include <SD.h>
 #include <avr/sleep.h>
 
-// Ladyada's logger modified by Bill Greiman to use the SdFat library
-//
-// This code shows how to listen to the GPS module in an interrupt
-// which allows the program to have more 'freedom' - just parse
-// when a new NMEA sentence is available! Then access data when
-// desired.
-//
-// Tested and works great with the Adafruit Ultimate GPS Shield
-// using MTK33x9 chipset
-//    ------> http://www.adafruit.com/products/
-// Pick one up today at the Adafruit electronics shop 
-// and help support open source hardware & software! -ada
 
-//SoftwareSerial mySerial(8, 7);
 Adafruit_GPS GPS(&Serial1); //using MEGA tx1, rx1 hardware serial instead of SoftSerial
 
 // Set GPSECHO to 'false' to turn off echoing the GPS data to the Serial console
@@ -29,6 +16,7 @@ Adafruit_GPS GPS(&Serial1); //using MEGA tx1, rx1 hardware serial instead of Sof
 // Set the pins used
 #define chipSelect 10
 #define ledPin 13
+#define windVaneSignal A0
 
 File logfile;
 
@@ -41,11 +29,9 @@ float mydecimallatitude = 0.0;
 float mydecimallongitude = 0.0;
 float myDistanceToGo = 0.0;
 
-float desiredHeading = 5.0; //from GPS
+float desiredHeading = 5.0; //from planner
 float currentHeading = 178.0; //from compass
-float relWindAngle = 45.0; //from wind vane
-//float flowDiff; // from anemometers
-//float boatHeel; // from accelerometer
+float relWindAngle = 0.0; //from wind vane
 
 float sailTrim = 0.3; //actuator variables
 float rudderAngle = 0.1;
@@ -98,10 +84,6 @@ void setup() {
   /////////////////////********************   GPS AND SD CARD INITIALIZATION   ******************************/////////////////////
   
   
-  // for Leonardos, if you want to debug SD issues, uncomment this line
-  // to see serial output
-  //while (!Serial);
-  
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
@@ -114,7 +96,6 @@ void setup() {
   
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect, 11, 12, 13)) {
-  //if (!SD.begin(chipSelect)) {      // if you're using an UNO, you can use this line instead
     Serial.println("Card init. failed!");
     error(2);
   }
@@ -176,7 +157,9 @@ void loop() {
     return;
   }
   
-  ///////////////////////////////////////**************************   GPS HEADING CALCULATION ******************///////////////////
+///////////////////////////////////////**************************GPS LOCATION UPDATE *********************////////////////////////
+  
+  // [implement] update current GPS location and filter using RP knowledge
   
   char c = GPS.read();
   if (GPSECHO)
@@ -261,34 +244,37 @@ void loop() {
 
     Serial.println("Logging Data");
     
-    // building statement
-    //logData(); // CAN ONLY TAKE PROPERLY ROUNDED VALUES
-    // End added code
-    ///////////////////////
     logData();
-  } 
+  }
+ 
+////////////////////////////////////************************UPDATE SENSORS AND RUN CONTROLLERS***************/////////////////////
+
+  updateWindDirection(); //use to test wind sensor
+  //[implement] updateCurrentHeading(): take in compass data every time step and apply filter
+  //[implement] updateTurningRate()/getRotationRate: used for fuzzy logic
+  
+  //[implement] updateDesiredHeading(): initiate planner method once every minute or 30 sec
+  
+  //[implement] rudderController(): run w/ every loop iteration recieving filtered data and response at x Hz
+  //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
   
 }
 
+
+
+
+
+
+
+///////////////////////////*******************DATA LOGGER METHOD****************************************//////////////////////////
 void logData(){
-  
+  // logs every second w/ GPS
   /*
     Print statement:
     
     DESIRED HEADING [DEG], CURRENT HEADING [DEG], RUDDER ANGLE, REL WIND ANGLE [DEG], SAIL TRIM;
     
   */
-  
-  
-  //    char *stringptr = GPS.lastNMEA();
-  //    uint8_t stringsize = strlen(stringptr);
-  //    if (stringsize != logfile.write((uint8_t *)stringptr, stringsize))    //write the string to the SD file
-  //      error(4);
-        
-          
-     //String bufferString = to_string(currentHeading);
-     //const char *buffer = bufferString.c_str();
-  //   char buffer[10];
   
   float data[5] = {desiredHeading, currentHeading, rudderAngle, relWindAngle, sailTrim};
   int dataLength = 5;
@@ -299,23 +285,7 @@ void logData(){
     char bufferArray[7];
     char * bufferPointer;
     bufferPointer = bufferArray;
-    //Serial.println(data[1]);
-    /*float val;
-    
-    switch(i){
-      case 0:
-        val = desiredHeading;
-      case 1:
-        val = currentHeading;
-      case 2:
-        val = rudderAngle;
-      case 3:
-        val = relWindAngle;
-      case 4:
-        val = sailTrim;
-      default:
-        val = 0.0;
-    }*/
+
     dtostrf(data[i], -8, 3, bufferPointer);     //convert float to string and store in char array (buffer)
     bufferArray[7] = ',';     //change char before '/0' to delimeter between values
     
@@ -333,6 +303,42 @@ void logData(){
   
 }
 
+////////////////////////**************************PLANNER METHOD*************************////////////////////////////////////////
+void updateDesiredHeading(){
+  // 1 min timescale
+  
+  
+  
+}
 
+////////////////////////**************************WIND SENSOR METHOD***************************///////////////////////////////////
+void updateWindDirection(){
+  
+  float angle = (analogRead(windVaneSignal)/1024.0)*360.0;
+  relWindAngle = angle;
+  
+  // [implement] apply filters and separate out into 3 data streams
+  /*
+    avgAngle = 0.99*prevAngle +0.01*angle; //make prevAngle a global
+  prevAngle = angle;
+  Serial.print("Average: ");
+  Serial.println(avgAngle);  
+  */
+  
+}
 
+void updateCurrentHeading(){
+  //get data from compass and filter appropriately goes to controller
+}
+
+void rudderController(){
+    //[implement] rudderController(): run w/ every loop iteration recieving filtered data and response at x Hz
+
+}
+
+void sailTrimController(){
+  //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
+  
+}
+  
 /* End code */
