@@ -3,9 +3,12 @@
 #include <SoftwareSerial.h>
 #include <SD.h>
 #include <avr/sleep.h>
+#include <Wire.h>
+#include <LSM303.h>
 
 
 Adafruit_GPS GPS(&Serial1); //using MEGA tx1, rx1 hardware serial instead of SoftSerial
+LSM303 compass; //initializing compass on SDA(20) and SCL(21)
 
 // Set GPSECHO to 'false' to turn off echoing the GPS data to the Serial console
 // Set to 'true' if you want to debug and listen to the raw GPS sentences
@@ -30,7 +33,7 @@ float mydecimallongitude = 0.0;
 float myDistanceToGo = 0.0;
 
 float desiredHeading = 5.0; //from planner
-float currentHeading = 178.0; //from compass
+float currentHeading = 0.0; //from compass
 float relWindAngle = 0.0; //from wind vane
 
 float sailTrim = 0.3; //actuator variables
@@ -135,9 +138,19 @@ void setup() {
   
   ////////////////////////********************   OTHER INITIALIZATION PROCEDURES *********************************////////////////
   
-   // *initialize other sensors here* 
+  Wire.begin();
+  compass.init();
+  compass.enableDefault();
+   
+   /*
+  Calibration values; the default values of +/-32767 for each axis
+  lead to an assumed magnetometer bias of 0. Use the Calibrate example
+  program to determine appropriate values for your particular unit.
+  */
+  compass.m_min = (LSM303::vector<int16_t>) {  -254,    -50,   -676};
+  compass.m_max = (LSM303::vector<int16_t>){    +3,    -41,   -664};
  
-  Serial.println("Ready!");
+  Serial.println("All Sensors Initialized... ");
 }
 
 
@@ -156,7 +169,6 @@ void loop() {
     Serial.println("Logging Done!!");
     return;
   }
-  
 ///////////////////////////////////////**************************GPS LOCATION UPDATE *********************////////////////////////
   
   // [implement] update current GPS location and filter using RP knowledge
@@ -250,14 +262,14 @@ void loop() {
 ////////////////////////////////////************************UPDATE SENSORS AND RUN CONTROLLERS***************/////////////////////
 
   updateWindDirection(); //use to test wind sensor
-  //[implement] updateCurrentHeading(): take in compass data every time step and apply filter
+  updateCurrentHeading(); //take in compass data every time step and apply filter
   //[implement] updateTurningRate()/getRotationRate: used for fuzzy logic
   
   //[implement] updateDesiredHeading(): initiate planner method once every minute or 30 sec
   
   //[implement] rudderController(): run w/ every loop iteration recieving filtered data and response at x Hz
   //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
-  
+  //logData();
 }
 
 
@@ -328,7 +340,33 @@ void updateWindDirection(){
 }
 
 void updateCurrentHeading(){
-  //get data from compass and filter appropriately goes to controller
+  
+  compass.read();
+  
+  /*
+  When given no arguments, the heading() function returns the angular
+  difference in the horizontal plane between a default vector and
+  north, in degrees.
+  
+  The default vector is chosen by the library to point along the
+  surface of the PCB, in the direction of the top of the text on the
+  silkscreen. This is the +X axis on the Pololu LSM303D carrier and
+  the -Y axis on the Pololu LSM303DLHC, LSM303DLM, and LSM303DLH
+  carriers.
+  
+  To use a different vector as a reference, use the version of heading()
+  that takes a vector arg
+  
+  ument; for example, use
+  
+    compass.heading((LSM303::vector<int>){0, 0, 1});
+  
+  to use the +Z axis as a reference.
+  */
+  
+  currentHeading = compass.heading();
+  
+  //[implement] filter appropriately, goes to controller
 }
 
 void rudderController(){
