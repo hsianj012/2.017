@@ -5,6 +5,7 @@
 #include <avr/sleep.h>
 #include <Wire.h>
 #include <LSM303.h>
+#include <Servo.h>
 
 
 Adafruit_GPS GPS(&Serial1); //using MEGA tx1, rx1 hardware serial instead of SoftSerial
@@ -19,9 +20,13 @@ LSM303 compass; //initializing compass on SDA(20) and SCL(21)
 // Set the pins used
 #define chipSelect 10
 #define ledPin 13
-#define windVaneSignal A0
+#define windVaneSignal A2
+#define rudServo 44
+#define trimServo 45
 
 File logfile;
+Servo rudderServo;
+Servo sailTrimServo;
 
 ///////////////////////
 // Added extra variables
@@ -34,7 +39,9 @@ float myDistanceToGo = 0.0;
 
 float desiredHeading = 5.0; //from planner
 float currentHeading = 0.0; //from compass
-float relWindAngle = 0.0; //from wind vane
+float relWindAngle_trim = 0.0; //from wind vane
+float relWindAngle_rud = 0.0;
+float relWindAngle_plan = 0.0;
 
 float sailTrim = 0.3; //actuator variables
 float rudderAngle = 0.1;
@@ -43,6 +50,7 @@ float rudderAngle = 0.1;
 
 boolean isLogging = true;
 unsigned long logTime = 10000; //in ms
+unsigned long lStart = 0; //in ms
 ///////////////////////
 
 // read a Hex value and return the decimal equivalent
@@ -150,7 +158,9 @@ void setup() {
   compass.m_min = (LSM303::vector<int16_t>) {  -254,    -50,   -676};
   compass.m_max = (LSM303::vector<int16_t>){    +3,    -41,   -664};
  
-  Serial.println("All Sensors Initialized... ");
+  rudderServo.attach(rudServo);
+  sailTrimServo.attach(trimServo);
+
 }
 
 
@@ -254,15 +264,15 @@ void loop() {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
 
-    Serial.println("Logging Data");
+    //Serial.println("Logging Data");
     
-    logData();
+    //logData();
   }
  
 ////////////////////////////////////************************UPDATE SENSORS AND RUN CONTROLLERS***************/////////////////////
-
-  updateWindDirection(); //use to test wind sensor
-  updateCurrentHeading(); //take in compass data every time step and apply filter
+  float loopRate = getLoopRate();
+  updateWindDirection(loopRate); //use to test wind sensor
+  updateCurrentHeading(loopRate); //take in compass data every time step and apply filter
   //[implement] updateTurningRate()/getRotationRate: used for fuzzy logic
   
   //[implement] updateDesiredHeading(): initiate planner method once every minute or 30 sec
@@ -287,9 +297,8 @@ void logData(){
     DESIRED HEADING [DEG], CURRENT HEADING [DEG], RUDDER ANGLE, REL WIND ANGLE [DEG], SAIL TRIM;
     
   */
-  
-  float data[5] = {desiredHeading, currentHeading, rudderAngle, relWindAngle, sailTrim};
   int dataLength = 5;
+  float data[5] = {desiredHeading, currentHeading, rudderAngle, relWindAngle_trim, sailTrim,};
   
   for(int i=0; i<dataLength; i++){     //iterate through array of data
     
@@ -324,12 +333,31 @@ void updateDesiredHeading(){
 }
 
 ////////////////////////**************************WIND SENSOR METHOD***************************///////////////////////////////////
-void updateWindDirection(){
+void updateWindDirection(float deltaT){
   
   float angle = (analogRead(windVaneSignal)/1024.0)*360.0;
-  relWindAngle = angle;
   
-  // [implement] apply filters and separate out into 3 data streams
+  // [implement] offset so that 0 deg is actual pointing to bow
+  
+  // apply filters and separate out into 3 data streams
+  float f_cutoff_trim = 4.0; //cutoff fequency for sail trim controller, change this to adjust response time of controller
+  float f_cutoff_rud = 0.5; //cutoff fequency for modifying desired heading for rudder controller, change this to adjust response time of controller
+  float f_cutoff_plan = 1/60.0; //cutoff fequency for planner, change this to adjust averaging for the planner
+  
+  float alpha_trim = deltaT/((1/(2*PI*f_cutoff_trim))+deltaT);
+  float alpha_rud = deltaT/((1/(2*PI*f_cutoff_rud))+deltaT);
+  float alpha_plan = deltaT/((1/(2*PI*f_cutoff_plan))+deltaT);
+  
+  relWindAngle_trim = alpha_trim*angle+(1-alpha_trim)*relWindAngle_trim;
+  relWindAngle_rud = alpha_rud*angle+(1-alpha_rud)*relWindAngle_rud;
+  relWindAngle_plan = alpha_plan*angle+(1-alpha_plan)*relWindAngle_plan;
+  
+  Serial.print("Wind Angle (trim controller filtered): ");
+  Serial.print(relWindAngle_trim);
+  Serial.print("Wind Angle (desired heading adjustment filtered): ");
+  Serial.print(relWindAngle_rud);
+  Serial.print("Wind Angle (planner filtered): ");
+  Serial.print(relWindAngle_plan);  
   /*
     avgAngle = 0.99*prevAngle +0.01*angle; //make prevAngle a global
   prevAngle = angle;
@@ -339,10 +367,8 @@ void updateWindDirection(){
   
 }
 
-void updateCurrentHeading(){
-  
-  compass.read();
-  
+void updateCurrentHeading(float deltaT){
+
   /*
   When given no arguments, the heading() function returns the angular
   difference in the horizontal plane between a default vector and
@@ -355,28 +381,53 @@ void updateCurrentHeading(){
   carriers.
   
   To use a different vector as a reference, use the version of heading()
-  that takes a vector arg
+  that takes a vector argument; for example, use
   
-  ument; for example, use
-  
-    compass.heading((LSM303::vector<int>){0, 0, 1});
+  compass.heading((LSM303::vector<int>){0, 0, 1});
   
   to use the +Z axis as a reference.
   */
   
-  currentHeading = compass.heading();
+  int f_cutoff = 20; //cutoff fequency for rudder controller, change this to adjust response time of controller
+  float alpha = deltaT/((1/(2*PI*f_cutoff))+deltaT);
   
-  //[implement] filter appropriately, goes to controller
+  compass.read();
+  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading;
+  Serial.print("Filtered Current Heading: ");
+  Serial.println(currentHeading);
+  //[implement] change heading reference angle
 }
 
 void rudderController(){
     //[implement] rudderController(): run w/ every loop iteration recieving filtered data and response at x Hz
-
+    // CALIBRATION INFO (RC boat): pwm 50-150
+    float kp = 1.0;
+    float u = 100;
+    float error = (desiredHeading - currentHeading);
+    
+    if(error > 90.0)
+      u = 50;
+    else if (error < -90.0)
+      u = 150;
+    else
+      u = map((-kp*error),(-kp*90.0),(-kp*-90.0),50,150);
+      
+    rudderServo.write(u);
 }
 
 void sailTrimController(){
   //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
-  
+  // CALIBRATION INFO (RC boat): pwm 50 - 130
+  sailTrimServo.write(20);
+}
+
+////////////////////////////////**********************CALCULAT DELTA T OF LOOP/SENSOR READ RATE******************/////////////////
+float getLoopRate(){
+  float dT = 0.001*(millis()-lStart);
+  lStart = millis();
+  Serial.print("Loop delta T: ");
+  Serial.println(dT);
+  return dT;
 }
   
 /* End code */
