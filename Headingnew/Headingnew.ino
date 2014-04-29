@@ -41,7 +41,7 @@ void loop() {
   
   to use the +Z axis as a reference.
   */
-  float heading = compass.heading();
+  float heading = compass.heading((LSM303::vector<int>){1, 0, 0});
   
   Serial.println(heading);
   delay(100);

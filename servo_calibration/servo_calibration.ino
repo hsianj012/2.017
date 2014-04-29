@@ -8,7 +8,6 @@
 Servo myservo;  // create servo object to control a servo 
                 // a maximum of eight servo objects can be created 
  
- 
 void setup() 
 { 
   myservo.attach(45);  // attaches the servo on pin 9 to the servo object 
@@ -17,7 +16,11 @@ void setup()
  
 void loop() 
 { 
-  for(i=0; i<60;i++){
-    myservo.write(i);   // waits 15ms for the servo to reach the position 
-  } 
+
+  myservo.write(50);
+  delay(2000); 
+  myservo.write(90);
+  delay(2000);
+  myservo.write(150);
+  delay(2000);  // waits 15ms for the servo to reach the position 
 } 
