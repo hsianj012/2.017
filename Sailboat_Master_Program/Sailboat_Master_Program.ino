@@ -49,7 +49,7 @@ float u_rudder = 100;
 
 
 boolean isLogging = true;
-unsigned long logTime = 50000; //in ms
+unsigned long logTime = 180000; //in ms
 unsigned long lStart = 0; //in ms
 ///////////////////////
 
@@ -404,12 +404,11 @@ void updateCurrentHeading(float deltaT){
 }
 
 void rudderController(){
-    // CALIBRATION INFO (RC boat): pwm 50-150
-    //float kp = 1.0;
+    // CALIBRATION INFO (RC boat): pwm 50-150 (team boat): pwm 115 center, 60-160
     desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
     float error = (desiredHeading - currentHeading);
     float saturation = 90.0; //lower saturation yields higher effective kp
-    float kp = 0.5; //for kp = 0.5 saturation reached at error = +/- 90 deg
+    float kp = 0.7; //for kp = 0.5 saturation reached at error = +/- 90 deg
                     //incrementing kp by 0.1 moves saturation value ~10 deg
     
     //[implement] kp instead of saturation value, intergral and derivative control
@@ -438,7 +437,7 @@ void rudderController(){
 
 void sailTrimController(){
   //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
-  // CALIBRATION INFO (RC boat): pwm 50 - 130
+  // CALIBRATION INFO (RC boat): pwm 50 - 130 (team boat): pwm 70-110, 70 = "close haul" 90 = "beam reach" 110="downwind run"
   sailTrimServo.write(20);
 }
 
