@@ -392,35 +392,47 @@ void updateCurrentHeading(float deltaT){
   float alpha = deltaT/((1/(2*PI*f_cutoff))+deltaT);
   
   compass.read();
+  //(LSM303::vector<int>){1, 0, 0}
   if(currentHeading == 1000.0){
-    currentHeading = alpha*compass.heading((LSM303::vector<int>){1, 0, 0});
+    currentHeading = alpha*compass.heading();
     return;
   }
-  currentHeading = alpha*compass.heading((LSM303::vector<int>){1, 0, 0})+(1-alpha)*currentHeading;
+  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading;
 //  Serial.print("Filtered Current Heading: ");
 //  Serial.println(currentHeading);
   //[implement] change heading reference angle
 }
 
 void rudderController(){
-    //[implement] rudderController(): run w/ every loop iteration recieving filtered data and response at x Hz
     // CALIBRATION INFO (RC boat): pwm 50-150
-    float kp = 1.0;
+    //float kp = 1.0;
+    desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
     float error = (desiredHeading - currentHeading);
+    float saturation = 90.0; //lower saturation yields higher effective kp
+    float kp = 0.5; //for kp = 0.5 saturation reached at error = +/- 90 deg
+                    //incrementing kp by 0.1 moves saturation value ~10 deg
     
-    if(error > 90.0)
+    //[implement] kp instead of saturation value, intergral and derivative control
+    /*
+    if(error > saturation)
       u_rudder = 150;
-    else if (error < -90.0)
+    else if (error < -saturation)
       u_rudder = 50;
     else
-      u_rudder = map((kp*error),(kp*-90.0),(kp*90.0),50,150);
+      u_rudder = map(error, -saturation, saturation, 50, 150);
+    */
+    
+    u_rudder = constrain(kp*error+100,50,150); //keeps control action within acceptable values for servo pwm, 
+                                               //controller+100 is compensation for servo PWM offset
+      
 //    Serial.print("desired heading: ");
 //    Serial.println(desiredHeading);
 //    Serial.print("current heading: ");
 //    Serial.println(currentHeading);
 //    Serial.print("actuator: ");
-//    Serial.println(u);
+//    Serial.println(u_rudder);
     rudderServo.write(u_rudder);
+
 
 }
 
