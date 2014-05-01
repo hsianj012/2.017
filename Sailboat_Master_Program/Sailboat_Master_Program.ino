@@ -425,8 +425,19 @@ void rudderController(){
 }
 
 void sailTrimController(){
+//  void sailTrimController(relWindAngle_trim){
+
   //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
   // CALIBRATION INFO (RC boat): pwm 50 - 130
+  
+  
+  //if (relWindAngle_trim < 45)
+  //SailTrimServo.write(130);
+  //else if (relWindAngle_trim > 45 && relWindAngle_trim < 90)
+  //SailTrimServo.write(90);
+  //else 
+  //SailTrimServo.write(0);
+  //
   sailTrimServo.write(20);
 }
 
