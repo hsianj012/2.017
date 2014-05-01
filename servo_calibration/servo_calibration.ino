@@ -10,17 +10,17 @@ Servo myservo;  // create servo object to control a servo
  
 void setup() 
 { 
-  myservo.attach(45);  // attaches the servo on pin 9 to the servo object 
+  myservo.attach(44);  // attaches the servo on pin 9 to the servo object 
 } 
  
  
 void loop() 
 { 
 
-  myservo.write(50);
+  myservo.write(70);
   delay(2000); 
   myservo.write(90);
   delay(2000);
-  myservo.write(150);
+  myservo.write(110);
   delay(2000);  // waits 15ms for the servo to reach the position 
 } 
