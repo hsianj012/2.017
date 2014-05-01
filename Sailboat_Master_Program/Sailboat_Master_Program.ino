@@ -409,7 +409,7 @@ void updateCurrentHeading(float deltaT){
     currentHeading = alpha*compass.heading();
     return;
   }
-  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading;
+  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading-180;
 //  Serial.print("Filtered Current Heading: ");
 //  Serial.println(currentHeading);
   //[implement] change heading reference angle
@@ -450,20 +450,12 @@ void sailTrimController(){
 //  void sailTrimController(relWindAngle_trim){
 
   //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
-<<<<<<< HEAD
+
   // CALIBRATION INFO (RC boat): pwm 50 - 130
   
-  
-  //if (relWindAngle_trim < 45)
-  //SailTrimServo.write(130);
-  //else if (relWindAngle_trim > 45 && relWindAngle_trim < 90)
-  //SailTrimServo.write(90);
-  //else 
-  //SailTrimServo.write(0);
-  //
-=======
+ 
+
   // CALIBRATION INFO (RC boat): pwm 50 - 130 (team boat): pwm 70-110, 70 = "close haul" 90 = "beam reach" 110="downwind run"
->>>>>>> cac68791457ec4a381992e5d72209347b7f956df
   sailTrimServo.write(20);
 }
 
