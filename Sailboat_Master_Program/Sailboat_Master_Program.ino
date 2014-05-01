@@ -429,7 +429,7 @@ void rudderController(float deltaT){
     rudIntegral = constrain((rudIntegral + error*deltaT),-25/ki,25/ki); 
     //constraint prevents indefinite windup; 25 is the max pwm contribution of the integral controller
     
-    u_rudder = constrain((kp*error + ki*rudIntegral + kd*(error-rudPrevError)/deltaT)+100,50,150); 
+    u_rudder = constrain((kp*error + ki*rudIntegral + kd*(error-rudPrevError)/deltaT)+115,60,160); 
     //keeps control action within acceptable values for servo pwm; controller+100 is compensation for servo PWM offset
       
 //    Serial.print("desired heading: ");
@@ -450,7 +450,6 @@ void sailTrimController(){
 //  void sailTrimController(relWindAngle_trim){
 
   //[implement] sailTrimController(): run w/ every loop iteration recieving filtered data and response at y Hz
-<<<<<<< HEAD
   // CALIBRATION INFO (RC boat): pwm 50 - 130
   
   
@@ -461,9 +460,7 @@ void sailTrimController(){
   //else 
   //SailTrimServo.write(0);
   //
-=======
   // CALIBRATION INFO (RC boat): pwm 50 - 130 (team boat): pwm 70-110, 70 = "close haul" 90 = "beam reach" 110="downwind run"
->>>>>>> cac68791457ec4a381992e5d72209347b7f956df
   sailTrimServo.write(20);
 }
 
