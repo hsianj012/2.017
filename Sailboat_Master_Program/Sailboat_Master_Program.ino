@@ -98,7 +98,7 @@ void setup() {
   
   /////////////////////********************   GPS AND SD CARD INITIALIZATION   ******************************/////////////////////
   
-  
+  delay(10000); //give time to close boat electronics before starting test
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
@@ -406,10 +406,14 @@ void updateCurrentHeading(float deltaT){
   compass.read();
   //(LSM303::vector<int>){1, 0, 0}
   if(currentHeading == 9999.9){
-    currentHeading = alpha*compass.heading();
+    currentHeading = alpha*compass.heading((LSM303::vector<int>){1, 0, 0});
     return;
   }
+<<<<<<< HEAD
   currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading-180;
+=======
+  currentHeading = alpha*compass.heading((LSM303::vector<int>){1, 0, 0})+(1-alpha)*currentHeading;
+>>>>>>> ba7f12126bb27ad1afe82fc74028b53f332a7108
 //  Serial.print("Filtered Current Heading: ");
 //  Serial.println(currentHeading);
   //[implement] change heading reference angle
@@ -419,17 +423,17 @@ void updateCurrentHeading(float deltaT){
 
 void rudderController(float deltaT){
     // CALIBRATION INFO (RC boat): pwm 50-150 (team boat): pwm 115 center, 60-160
-    //desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
+    desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
     float error = (desiredHeading - currentHeading);
-    float kp = 0.7; //for kp = 0.5 saturation reached at error = +/- 90 deg
+    float kp = 0.4; //for kp = 0.5 saturation reached at error = +/- 90 deg
                     //incrementing kp by 0.1 moves saturation value ~10 deg
-    float ki = 0.01;
-    float kd = 0.05;
+    float ki = 0.0;
+    float kd = 0.0;
     
     rudIntegral = constrain((rudIntegral + error*deltaT),-25/ki,25/ki); 
     //constraint prevents indefinite windup; 25 is the max pwm contribution of the integral controller
     
-    u_rudder = constrain((kp*error + ki*rudIntegral + kd*(error-rudPrevError)/deltaT)+100,50,150); 
+    u_rudder = constrain((kp*error + ki*rudIntegral + kd*(error-rudPrevError)/deltaT)+115,60,160); 
     //keeps control action within acceptable values for servo pwm; controller+100 is compensation for servo PWM offset
       
 //    Serial.print("desired heading: ");
@@ -454,6 +458,10 @@ void sailTrimController(){
   // CALIBRATION INFO (RC boat): pwm 50 - 130
   
  
+
+  // CALIBRATION INFO (RC boat): pwm 50 - 130
+  
+
 
   // CALIBRATION INFO (RC boat): pwm 50 - 130 (team boat): pwm 70-110, 70 = "close haul" 90 = "beam reach" 110="downwind run"
   sailTrimServo.write(20);
