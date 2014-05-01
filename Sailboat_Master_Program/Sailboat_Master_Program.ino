@@ -98,7 +98,7 @@ void setup() {
   
   /////////////////////********************   GPS AND SD CARD INITIALIZATION   ******************************/////////////////////
   
-  
+  delay(10000); //give time to close boat electronics before starting test
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
@@ -406,10 +406,10 @@ void updateCurrentHeading(float deltaT){
   compass.read();
   //(LSM303::vector<int>){1, 0, 0}
   if(currentHeading == 9999.9){
-    currentHeading = alpha*compass.heading();
+    currentHeading = alpha*compass.heading((LSM303::vector<int>){1, 0, 0});
     return;
   }
-  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading;
+  currentHeading = alpha*compass.heading((LSM303::vector<int>){1, 0, 0})+(1-alpha)*currentHeading;
 //  Serial.print("Filtered Current Heading: ");
 //  Serial.println(currentHeading);
   //[implement] change heading reference angle
@@ -419,12 +419,12 @@ void updateCurrentHeading(float deltaT){
 
 void rudderController(float deltaT){
     // CALIBRATION INFO (RC boat): pwm 50-150 (team boat): pwm 115 center, 60-160
-    //desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
+    desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
     float error = (desiredHeading - currentHeading);
-    float kp = 0.7; //for kp = 0.5 saturation reached at error = +/- 90 deg
+    float kp = 0.4; //for kp = 0.5 saturation reached at error = +/- 90 deg
                     //incrementing kp by 0.1 moves saturation value ~10 deg
-    float ki = 0.01;
-    float kd = 0.05;
+    float ki = 0.0;
+    float kd = 0.0;
     
     rudIntegral = constrain((rudIntegral + error*deltaT),-25/ki,25/ki); 
     //constraint prevents indefinite windup; 25 is the max pwm contribution of the integral controller
