@@ -160,9 +160,8 @@ void setup() {
   lead to an assumed magnetometer bias of 0. Use the Calibrate example
   program to determine appropriate values for your particular unit.
   */
-  compass.m_min = (LSM303::vector<int16_t>) {  -254,    -50,   -676};
-  compass.m_max = (LSM303::vector<int16_t>){    +3,    -41,   -664};
- 
+ compass.m_min = (LSM303::vector<int16_t>){    -227,    +23,   -514};
+  compass.m_max = (LSM303::vector<int16_t>){    +191,   +489,   -385};
   rudderServo.attach(rudServo);
   sailTrimServo.attach(trimServo);
   
