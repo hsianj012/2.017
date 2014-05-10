@@ -266,7 +266,15 @@ void loop() {
           
     Serial.print("H: ");Serial.println(desiredHeading,6); 
     Serial.print("D: ");Serial.println(myDistanceToGo,6);
-    
+ 
+ /*   
+    if(millis()<60000)
+      desiredHeading = 180.0;
+    else if(millis() < 120000)
+      desiredHeading = 90.0;
+    else
+      desiredHeading = 0;
+*/
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -331,7 +339,6 @@ void logData(){
   }
     
     logfile.flush();  //save data statement
-    Serial.println();
   
 }
 
@@ -407,7 +414,7 @@ void updateCurrentHeading(float deltaT){
     currentHeading = compass.heading(); //16 to compensate for offset in compass error
     return;
   }
-  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading;
+  currentHeading = alpha*compass.heading()+(1-alpha)*currentHeading; //-180 ??
 
 //  Serial.print("Filtered Current Heading: ");
 //  Serial.println(currentHeading);
@@ -419,11 +426,19 @@ void updateCurrentHeading(float deltaT){
 void rudderController(float deltaT){
     // CALIBRATION INFO (RC boat): pwm 50-150 (team boat): pwm 115 center, 60-160
     desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
-    float error = (desiredHeading - currentHeading);
+   
     float kp = 0.6; //for kp = 0.5 saturation reached at error = +/- 90 deg
                     //incrementing kp by 0.1 moves saturation value ~10 deg
     float ki = 0.01;
     float kd = 0.0;
+   
+    float error = (desiredHeading - currentHeading); //valid if error <= 180 && error >=-180
+    
+    if(error > 180.0) //fixing 0/360deg discontinuity
+      error = desiredHeading - (currentHeading + 360);
+  
+    else if (error < -180.0)
+      error = (desiredHeading + 360) - currentHeading;
     
     rudIntegral = constrain((rudIntegral + error*deltaT),-25/ki,25/ki); 
     //constraint prevents indefinite windup; 25 is the max pwm contribution of the integral controller
