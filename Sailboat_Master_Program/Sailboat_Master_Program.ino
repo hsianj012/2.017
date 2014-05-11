@@ -51,7 +51,7 @@ float u_rudder = 100;
 
 
 boolean isLogging = true;
-unsigned long logTime = 60000; //in ms
+unsigned long logTime = 180000; //in ms
 unsigned long lStart = 0; //in ms
 const int logRate = 10; //data is logged every [logRate] iterations of the loop; for a loop speed of 0.02, 5 logs/sec
 int logNumber = 0; 
@@ -98,7 +98,7 @@ void setup() {
   
   /////////////////////********************   GPS AND SD CARD INITIALIZATION   ******************************/////////////////////
   
-  //delay(10000); //give time to close boat electronics before starting test
+  delay(10000); //give time to close boat electronics before starting test
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
@@ -463,13 +463,13 @@ void sailTrimController(){
   // CALIBRATION INFO (RC boat): pwm 50 - 130 (team boat): pwm 70-110, 70 = "close haul" 90 = "beam reach" 110="downwind run"
   
   if(relWindAngle_trim < 50 || relWindAngle_trim > 310)
-    u_sailTrim = 70;
+    u_sailTrim = 65;
   
   else if(relWindAngle_trim < 180)
-    u_sailTrim = map(relWindAngle_trim,50,180,70,110);
+    u_sailTrim = map(relWindAngle_trim,50,180,65,110);
 
   else
-    u_sailTrim = map(relWindAngle_trim,180,310,110,70);
+    u_sailTrim = map(relWindAngle_trim,180,310,110,65);
   
 
   sailTrimServo.write(u_sailTrim);
