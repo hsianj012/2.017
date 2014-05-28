@@ -37,7 +37,7 @@ float mydecimallatitude = 0.0;
 float mydecimallongitude = 0.0;
 float myDistanceToGo = 0.0;
 
-float desiredHeading = 5.0; //from planner
+float desiredHeading = 0.0; //from planner
 float currentHeading = 9999.9; //from compass 9999.9 is a dummy variable to initialize the filter w/o 
 float rudPrevError = 0.0;
 float rudIntegral = 0.0;
@@ -51,9 +51,9 @@ float u_rudder = 100;
 
 
 boolean isLogging = true;
-unsigned long logTime = 180000; //in ms
+unsigned long logTime = 300000; //in ms
 unsigned long lStart = 0; //in ms
-const int logRate = 10; //data is logged every [logRate] iterations of the loop; for a loop speed of 0.02, 5 logs/sec
+const int logRate = 15; //data is logged every [logRate] iterations of the loop; for a loop speed of 0.02, 5 logs/sec
 int logNumber = 0; 
 ///////////////////////
 
@@ -116,7 +116,7 @@ void setup() {
     error(2);
   }
   char filename[15];
-  strcpy(filename, "5_4LOG00.TXT");
+  strcpy(filename, "512L0G00.TXT");
   for (uint8_t i = 0; i < 100; i++) {
     filename[6] = '0' + i/10;
     filename[7] = '0' + i%10;
@@ -222,8 +222,8 @@ void loop() {
     desiredLatitude = 41;
     desiredLongitude = -71.095161;
     
-    Serial.print("dlat: ");  Serial.println(desiredLatitude,6);
-    Serial.print("dlong: "); Serial.println(desiredLongitude,6);
+    //Serial.print("dlat: ");  Serial.println(desiredLatitude,6);
+    //Serial.print("dlong: "); Serial.println(desiredLongitude,6);
     
     // convert latitude and longitude to helpful values
     // Ex: 4213.14 = 42 [degrees] + 13.14 [minutes] /60 = 42.219 [decimal degrees]
@@ -248,32 +248,42 @@ void loop() {
     // (desiredLatitude-mydecimallatitude) * Rad_earth is the vertical part of the square.
     // When calculating the heading you do atan(horizontal/vertical) so the Rad_earth cancels.
     // To get the heading in degrees you multiply by 180 and divide by 3.141592.
-    desiredHeading = atan2(
-          cos(mydecimallatitude/180.0*3.141592)*(desiredLongitude - mydecimallongitude),
-          (desiredLatitude-mydecimallatitude))
-          *180.0/3.141592;
-    
-    //try to keep heading always positive.
-    if (desiredHeading <0)
-        desiredHeading = desiredHeading + 360;
-        
-    // Calculate distance to go: use pythagorean theorem.
-    myDistanceToGo = Rad_earth * 
-          sqrt(
-          pow((cos(mydecimallatitude/180.0*3.141592)*(desiredLongitude - mydecimallongitude)/180.0*3.141592),2.0)+
-          pow((desiredLatitude-mydecimallatitude)/180.0*3.141592,2.0));
+//    desiredHeading = atan2(
+//          cos(mydecimallatitude/180.0*3.141592)*(desiredLongitude - mydecimallongitude),
+//          (desiredLatitude-mydecimallatitude))
+//          *180.0/3.141592;
+//    
+//    //try to keep heading always positive.
+//    if (desiredHeading <0)
+//        desiredHeading = desiredHeading + 360;
+//        
+//    // Calculate distance to go: use pythagorean theorem.
+//    myDistanceToGo = Rad_earth * 
+//          sqrt(
+//          pow((cos(mydecimallatitude/180.0*3.141592)*(desiredLongitude - mydecimallongitude)/180.0*3.141592),2.0)+
+//          pow((desiredLatitude-mydecimallatitude)/180.0*3.141592,2.0));
           
-    Serial.print("H: ");Serial.println(desiredHeading,6); 
-    Serial.print("D: ");Serial.println(myDistanceToGo,6);
+    //Serial.print("H: ");Serial.println(desiredHeading,6); 
+    //Serial.print("D: ");Serial.println(myDistanceToGo,6);
  
- /*   
-    if(millis()<60000)
-      desiredHeading = 180.0;
-    else if(millis() < 120000)
-      desiredHeading = 90.0;
-    else
-      desiredHeading = 0;
-*/
+    
+//    if(millis()<15000){
+//      desiredHeading = 180.0;
+//      //Serial.println("First leg");
+//    }
+//    else if(millis() < 30000){
+//      desiredHeading = 90.0;
+//      //Serial.println("Second leg");
+//    }
+//    else if(millis() < 45000){
+//      desiredHeading = 310.0;
+//      //Serial.println("Third leg");
+//    }
+//    else{
+//      desiredHeading = 50.0;
+//      //Serial.println("Fourth leg");
+//    }
+
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -315,21 +325,21 @@ void logData(){
     DESIRED HEADING [DEG], CURRENT HEADING [DEG], RUDDER ANGLE, REL WIND ANGLE [DEG], SAIL TRIM;
     
   */
-  int dataLength = 5;
-  float data[5] = {desiredHeading, currentHeading, u_rudder, relWindAngle_trim, u_sailTrim,};
+  int dataLength = 7;
+  float data[7] = {desiredHeading, currentHeading, u_rudder, relWindAngle_trim, u_sailTrim, mydecimallatitude, mydecimallongitude};
   
   for(int i=0; i<dataLength; i++){     //iterate through array of data
     
     //char *buffer =  new char[11];     // create buffer w/ space to store value and delimeter
-    char bufferArray[7];
+    char bufferArray[9];
     char * bufferPointer;
     bufferPointer = bufferArray;
 
-    dtostrf(data[i], -8, 3, bufferPointer);     //convert float to string and store in char array (buffer)
-    bufferArray[7] = ',';     //change char before '/0' to delimeter between values
+    dtostrf(data[i], -10, 5, bufferPointer);     //convert float to string and store in char array (buffer)
+    bufferArray[9] = ',';     //change char before '/0' to delimeter between values
     
     if(i==(dataLength-1))    //if last value use the statement delimeter
-      bufferArray[7] = ';';
+      bufferArray[9] = ';';
       
     uint8_t len = strlen(bufferPointer);
     if (len != logfile.write((uint8_t*)bufferPointer, len))    //write the string to the SD file
@@ -356,7 +366,7 @@ void updateWindDirection(float deltaT){
   // [implement] offset so that 0 deg is actual pointing to bow
   
   // apply filters and separate out into 3 data streams
-  float f_cutoff_trim = 0.2; //cutoff fequency for sail trim controller, change this to adjust response time of controller
+  float f_cutoff_trim = 0.15; //cutoff fequency for sail trim controller, change this to adjust response time of controller
 //  float f_cutoff_rud = 0.5; //cutoff fequency for modifying desired heading for rudder controller, change this to adjust response time of controller
 //  float f_cutoff_plan = 1/60.0; //cutoff fequency for planner, change this to adjust averaging for the planner
 //  
@@ -404,7 +414,7 @@ void updateCurrentHeading(float deltaT){
   to use the +Z axis as a reference.
   */
   
-  float f_cutoff = 0.75; //cutoff fequency for rudder controller, change this to adjust response time of controller
+  float f_cutoff = 0.65; //cutoff fequency for rudder controller, change this to adjust response time of controller
   float alpha = deltaT/((1/(2*PI*f_cutoff))+deltaT);
   
   compass.read();
@@ -424,9 +434,28 @@ void updateCurrentHeading(float deltaT){
 
 void rudderController(float deltaT){
     // CALIBRATION INFO (RC boat): pwm 50-150 (team boat): pwm 115 center, 60-160
-    desiredHeading = 180.0; // FOR TESTING PURPOSES ONLY!!!!
+    //desiredHeading = 45.0; // FOR TESTING PURPOSES ONLY!!!!
+    
+    long time = millis();
+    
+    if(time<60000){
+      desiredHeading = 160.0;
+      //Serial.println("First leg");
+    }
+    else if(time < 120000){
+      desiredHeading = 100.0;
+      //Serial.println("Second leg");
+    }
+    else if(time < 180000){
+      desiredHeading = 45.0;
+      //Serial.println("Third leg");
+    }
+    else{
+      desiredHeading = 0.0;
+      //Serial.println("Fourth leg");
+    }
    
-    float kp = 0.6; //for kp = 0.5 saturation reached at error = +/- 90 deg
+    float kp = 0.7; //for kp = 0.5 saturation reached at error = +/- 90 deg
                     //incrementing kp by 0.1 moves saturation value ~10 deg
     float ki = 0.01;
     float kd = 0.0;
